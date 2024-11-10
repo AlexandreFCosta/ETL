@@ -1,0 +1,77 @@
+version: '3'
+
+x-spark-common: &spark-common
+  image: bitnami/spark:latest
+  volumes:
+    - ./jobs:/opt/bitnami/spark/jobs
+
+x-airflow-common: &airflow-common
+  build:
+    context: .
+    dockerfile: Dockerfile
+  env_file:
+    - airflow.env
+  environment:
+    # É possível configurar alertas de monitoramento quando se tem uma conta 
+    # profissional, configurando o recurso Senhas de Aplicativo 
+    AIRFLOW__EMAIL__EMAIL_BACKEND: airflow.utils.email.send_email_smtp
+    AIRFLOW__SMTP__SMTP_HOST: smtp-mail.outlook.com
+    AIRFLOW__SMTP__SMTP_STARTTLS: True
+    AIRFLOW__SMTP__SMTP_USER: alexandrefcosta.dev@outlook.com
+    AIRFLOW__SMTP__SMTP_PASSWORD: senha do aplicativo # criada com um email profissional
+    AIRFLOW__SMTP__SMTP_MAIL_FROM: alexandrefcosta.dev@outlook.com
+    AIRFLOW__SMTP__SMTP_PORT: 587
+  volumes:
+    - ./jobs:/opt/airflow/jobs
+    - ./dags:/opt/airflow/dags
+    - ./logs:/opt/airflow/logs
+    - ./bronze_layer:/opt/airflow/bronze_layer
+    - ./silver_layer:/opt/airflow/silver_layer
+    - ./gold_layer:/opt/airflow/gold_layer
+  depends_on:
+    - postgres
+
+services:
+  spark-master:
+    <<: *spark-common
+    command: bin/spark-class org.apache.spark.deploy.master.Master && apt-get update && apt-get install -y procps && entrypoint.sh
+    ports:
+      - "9090:8080"
+      - "7077:7077"
+    environment:
+      HADOOP_CONF_DIR: /usr/local/hadoop/etc/hadoop
+      YARN_CONF_DIR: /usr/local/hadoop/etc/hadoop
+
+  spark-worker:
+    <<: *spark-common
+    command: bin/spark-class org.apache.spark.deploy.worker.Worker spark://spark-master:7077
+    depends_on:
+      - spark-master
+    environment:
+      SPARK_MODE: worker
+      SPARK_WORKER_CORES: 2
+      SPARK_WORKER_MEMORY: 1g
+      SPARK_MASTER_URL: spark://spark-master:7077
+      HADOOP_CONF_DIR: /usr/local/hadoop/etc/hadoop
+      YARN_CONF_DIR: /usr/local/hadoop/etc/hadoop
+    ports:
+      - "4041:4041"
+
+  postgres:
+    image: postgres:14.0
+    environment:
+      - POSTGRES_USER=airflow
+      - POSTGRES_PASSWORD=airflow
+      - POSTGRES_DB=airflow
+
+  webserver:
+    <<: *airflow-common
+    command: bash -c " airflow db init && airflow webserver"
+    ports:
+      - "8080:8080"
+    depends_on:
+      - scheduler
+
+  scheduler:
+    <<: *airflow-common
+    command: bash -c " airflow db migrate && airflow users create --username alexa --firstname Alexandre --lastname Costa --role Admin --email alexandrefcosta.dev@outlook.com --password 1234 && airflow scheduler"

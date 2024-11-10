@@ -1,0 +1,9 @@
+.idea
+venv
+logs
+__pycache__
+*.pyo
+*.pyc
+*.part-
+
+
