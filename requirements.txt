@@ -6,3 +6,4 @@ papermill
 pyspark==3.5.1
 pytest
 requests==2.31.0
+psutil

@@ -1,85 +1,121 @@
-import sys
 import os
-sys.path.append(os.path.join(os.path.dirname(__file__), '..'))
-import airflow
+import sys
 from airflow import DAG
 from airflow.operators.python import PythonOperator
-from airflow.providers.papermill.operators.papermill import PapermillOperator
-from airflow.operators.email_operator import EmailOperator
-from jobs.python.unity_tests.main_tests import run_tests
-from jobs.python.bronze.extract_data import extract_data
-from jobs.python.data_quality.data_quality import run_data_quality_checks
-from datetime import datetime, timedelta
+from datetime import datetime
+import subprocess
+from airflow.providers.slack.operators.slack import SlackAPIPostOperator
 
-dag = DAG(
-    dag_id="sparking_flow",
-    default_args={
-        "depends_on_past":False,
-        "start_date": airflow.utils.dates.days_ago(1),
-        "email": ["alexandrefcosta.dev@outlook.com"],
-        "email_on_failure":True,
-        "email_on_retry":True,
-        "retries":1,
-        "retry_delay": timedelta(seconds=5),
-        "execution_timeout": timedelta(minutes=1),
-        "owner": "Alexandre Costa",
-    },
-    schedule_interval="@daily"
-)
+#
 
-start = PythonOperator(
-    task_id="start",
-    python_callable=lambda: print("Jobs started"),
-    dag=dag
-)
+# Adiciona o caminho do diretório onde `extract_data.py` está localizado
+sys.path.append(os.path.join(os.path.dirname(__file__), '..'))
 
-unity_tests_run = PythonOperator(
-    task_id="unity_tests_run",
-    python_callable=run_tests,
-    dag=dag
-)
-
-extract_data = PythonOperator(
-    task_id="extract_data",
-    python_callable=extract_data,
-    dag=dag
-)
-
-data_quality = PythonOperator(
-    task_id="data_quality",
-    python_callable=run_data_quality_checks,
-    dag=dag
-)
-
-send_email = EmailOperator(
-    task_id="send_email",
-    to="<email de destino>",
-    subject="Airflow Failure",
-    html_content="""<h3>Falha no processo de ETL.</h3>""",
-    dag=dag,
-    trigger_rule="one_failed"
-)
-
-transform_data = PapermillOperator(
-    task_id="transform_data",
-    input_nb='/opt/airflow/jobs/python/silver/transform_data.ipynb',      
-    output_nb='/opt/airflow/jobs/python/silver/transformed_data_output.ipynb', 
-    dag=dag
-)
-
-load_data = PapermillOperator(
-    task_id="load_data",
-    input_nb='/opt/airflow/jobs/python/gold/load_data.ipynb', 
-    output_nb='/opt/airflow/jobs/python/gold/load_data_output.ipynb',
-    dag=dag
-)
-
-end = PythonOperator(
-    task_id="end",
-    python_callable=lambda: print("Jobs completed successfully"),
-    dag=dag
-)
+# Importa o módulo `main` de `extract_data.py`, que executa a lógica principal
+from jobs.python.bronze.extract_data import main as extract_data_main
+from jobs.python.gold.load_data import main as run_data_aggregation
 
 
-start >> unity_tests_run >> extract_data >> data_quality >> send_email
-data_quality >> transform_data >> load_data >> end
+# Função de notificação para Slack
+def send_failure_slack_message(context):
+    task_instance = context.get('task_instance')
+    task_id = task_instance.task_id
+    dag_id = task_instance.dag_id
+    execution_date = context.get('execution_date')
+    slack_message = f"🚨 Task {task_id} failed in DAG {dag_id}. Execution Date: {execution_date}"
+
+    slack_operator = SlackAPIPostOperator(
+        task_id='slack_notification',
+        slack_conn_id='slack_conn',
+        channel='C08133R85G8',
+        text=slack_message
+    )
+
+    slack_operator.execute(context=context)
+
+# Função para executar o script de qualidade de dados
+def run_data_quality_checks():
+    # Caminho do arquivo Python de qualidade de dados
+    script_path = "/opt/airflow/data_quality/data_quality_checks.py"
+    
+    # Executa o script Python como um subprocesso
+    result = subprocess.run(["python", script_path], capture_output=True, text=True)
+    
+    # Checa se houve erros na execução do script
+    if result.returncode != 0:
+        raise Exception(f"Data Quality Check Failed: {result.stderr}")
+    print(result.stdout)
+
+# Função para executar o script de transformação de dados
+def run_data_transformation():
+    # Caminho do arquivo Python de transformação de dados
+    script_path = "/opt/airflow/silver/transform_data.py"
+    
+    # Executa o script Python como um subprocesso
+    result = subprocess.run(["python", script_path], capture_output=True, text=True)
+    
+    # Checa se houve erros na execução do script
+    if result.returncode != 0:
+        raise Exception(f"Data Transformation Failed: {result.stderr}")
+    print(result.stdout)
+
+# Define as funções para as tarefas
+def start_task():
+    print("Jobs started")
+
+def end_task():
+    print("Jobs completed successfully")
+
+# Definição da DAG
+with DAG(
+    "sparking_flow",
+    description="Pipeline de dados com checagem de qualidade e agregação",
+    schedule_interval="@daily",
+    start_date=datetime(2023, 1, 1),
+    catchup=False,
+) as dag:   
+
+    # Define os operadores para as tarefas da DAG
+    start = PythonOperator(
+        task_id='start',
+        python_callable=start_task,
+        dag=dag,
+    )
+
+    extract_data = PythonOperator(
+        task_id='extract_data',
+        python_callable=extract_data_main,
+        on_failure_callback=send_failure_slack_message,  # Chama a função main do arquivo extract_data.py
+        dag=dag,
+    )
+
+    data_quality_checks = PythonOperator(
+        task_id='data_quality_checks',
+        python_callable=run_data_quality_checks,
+        on_failure_callback=send_failure_slack_message,  # Chama a função de qualidade de dados
+        dag=dag,
+    )
+
+    data_transformation = PythonOperator(
+        task_id='data_transformation',
+        python_callable=run_data_transformation,
+        on_failure_callback=send_failure_slack_message,  # Chama o script de transformação de dados
+        dag=dag,
+    )
+
+    data_aggregation = PythonOperator(
+        task_id='data_aggregation',
+        python_callable=run_data_aggregation,
+        on_failure_callback=send_failure_slack_message,  # Chama o script de agregação de dados
+        dag=dag,
+    )
+
+    end = PythonOperator(
+        task_id='end',
+        python_callable=end_task,
+        on_failure_callback=send_failure_slack_message,
+        dag=dag,
+    )
+
+    # Define a ordem das tarefas
+    start >> extract_data >> data_quality_checks >> data_transformation >> data_aggregation >> end
