@@ -6,7 +6,6 @@ from datetime import datetime
 import subprocess
 from airflow.providers.slack.operators.slack import SlackAPIPostOperator
 
-#
 
 # Adiciona o caminho do diretório onde `extract_data.py` está localizado
 sys.path.append(os.path.join(os.path.dirname(__file__), '..'))
@@ -59,13 +58,6 @@ def run_data_transformation():
         raise Exception(f"Data Transformation Failed: {result.stderr}")
     print(result.stdout)
 
-# Define as funções para as tarefas
-def start_task():
-    print("Jobs started")
-
-def end_task():
-    print("Jobs completed successfully")
-
 # Definição da DAG
 with DAG(
     "sparking_flow",
@@ -76,11 +68,6 @@ with DAG(
 ) as dag:   
 
     # Define os operadores para as tarefas da DAG
-    start = PythonOperator(
-        task_id='start',
-        python_callable=start_task,
-        dag=dag,
-    )
 
     extract_data = PythonOperator(
         task_id='extract_data',
@@ -110,12 +97,5 @@ with DAG(
         dag=dag,
     )
 
-    end = PythonOperator(
-        task_id='end',
-        python_callable=end_task,
-        on_failure_callback=send_failure_slack_message,
-        dag=dag,
-    )
-
     # Define a ordem das tarefas
-    start >> extract_data >> data_quality_checks >> data_transformation >> data_aggregation >> end
+    extract_data >> data_quality_checks >> data_transformation >> data_aggregation
