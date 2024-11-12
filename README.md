@@ -55,7 +55,8 @@ The objective of this project is to demonstrate skills in consuming data from an
 
 - **Monitoring**: I used Airflow for monitoring the DAGs, configuring automatic retries to handle potential pipeline failures.:
 <img height="300em" src="https://github.com/AlexandreFCosta/ETL/blob/master/Documentation/images/monitoring.png"/>
-- **Alerts**: For notifications of failures or critical errors in the pipeline, I set up alerts via **Slack**, which sends an message on my channel "desafio-bees" in case of failure.:
+
+- **Alerts**  : For notifications of failures or critical errors in the pipeline, I set up alerts via **Slack**, which sends an message on my channel "desafio-bees" in case of failure. If you want to log in to Workspace to see the alerts, go to <a href="https://join.slack.com/t/tc-tech-workspace/shared_invite/zt-2uavr9nvo-sXE_Sq5GNt2brn6Hdz8fmw">Slack Worspace </a>:
 <img height="300em" src="https://github.com/AlexandreFCosta/ETL/blob/master/Documentation/images/slack.png"/>
 
 ### Testing
