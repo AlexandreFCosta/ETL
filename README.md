@@ -18,6 +18,9 @@ The objective of this project is to demonstrate skills in consuming data from an
 - **Containerization**: The project was modularized using **Docker**, facilitating the development environment and running pipelines in isolated containers.
 
 - **Data Lake Layers**:
+- Jobs/Python/
+  - **data_quality**: Data quality layer to guarantee data extraction and integrity.
+  - **unity_tests**: Unit testing layer to guarantee that the extraction will take place correctly.
   - **Bronze (Raw Data)**: API data is stored in JSON format without transformations.
   - **Silver (Curated Data)**: Data is transformed and partitioned by location, stored in Parquet format.
   - **Gold (Analytical Layer)**: An aggregated view containing the number of breweries by type and location.
@@ -33,27 +36,26 @@ The objective of this project is to demonstrate skills in consuming data from an
 
 1. Clone this repository:
    ```bash
-   git clone https://github.com/AlexandreFCosta/desafio_abinbev.git
-   cd desafio_abinbev
+   git clone -b master https://github.com/AlexandreFCosta/ETL.git
+   cd ETL
    ```
-
-2. Create the `.env` file to define the required environment variables, such as Gmail credentials for sending alerts.
 
 3. Start the Docker environment:
    ```bash
-   docker-compose up
+   docker-compose up -d --build
    ```
 
 4. Access the Airflow interface:
    - Open your browser and go to `http://localhost:8080`
-   - Use the default credentials `airflow` to log in.
+   - Use the default credentials `airflow` to log in = username: alexa and password: 1234.
 
 5. Run the pipeline directly from the Airflow interface.
 
 ### Monitoring and Alerts
 
 - **Monitoring**: I used Airflow for monitoring the DAGs, configuring automatic retries to handle potential pipeline failures.
-- **Alerts**: For notifications of failures or critical errors in the pipeline, I set up alerts via **Gmail**, which sends an email in case of failure.
+- **Alerts**: For notifications of failures or critical errors in the pipeline, I set up alerts via **Slack**, which sends an message on my channel "desafio-bees" in case of failure.:
+<img height="300em" src="https://github.com/AlexandreFCosta/ETL/blob/master/Documentation/images/slack.png"/>
 
 ### Testing
 
