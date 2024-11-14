@@ -42,7 +42,7 @@ The objective of this project is to demonstrate skills in consuming data from an
 
 3. Start the Docker environment:
    ```bash
-   docker-compose up -d --build
+   python controller.py
    ```
 
 4. Access the Airflow interface:
@@ -53,17 +53,25 @@ The objective of this project is to demonstrate skills in consuming data from an
 
 ### Monitoring and Alerts
 
-- **Monitoring**: I used Airflow for monitoring the DAGs, configuring automatic retries to handle potential pipeline failures.
-- **Alerts**: For notifications of failures or critical errors in the pipeline, I set up alerts via **Slack**, which sends an message on my channel "desafio-bees" in case of failure.:
+- **Monitoring**: I used Airflow for monitoring the DAGs, configuring automatic retries to handle potential pipeline failures.:
+<img height="300em" src="https://github.com/AlexandreFCosta/ETL/blob/master/Documentation/images/monitoring.png"/>
+
+- **Alerts**  : For notifications of failures or critical errors in the pipeline, I set up alerts via **Slack**, which sends an message on my channel "desafio-bees" in case of failure. If you want to log in to Workspace to see the alerts, go to <a href="https://join.slack.com/t/tc-tech-workspace/shared_invite/zt-2uavr9nvo-sXE_Sq5GNt2brn6Hdz8fmw">Slack Worspace </a>:
 <img height="300em" src="https://github.com/AlexandreFCosta/ETL/blob/master/Documentation/images/slack.png"/>
 
 ### Testing
 
 Tests were included to validate:
 - API consumption
-- Data transformation and partitioning
-- Aggregations for the Gold layer
 
 ## Final Considerations
 
-The pipeline was designed with a focus on modularity and scalability. Additionally, resilience measures were implemented, such as automatic retries and Gmail-configured alerts.
+The pipeline was designed with a focus on modularity and scalability. Additionally, resilience measures were implemented, such as automatic retries and Slack-configured alerts.
+
+In the load_data.py file you can see that I had to forcefully delete the gold layer files and write them with “append” instead of simply using “overwrite”, because I couldn't use it on my machine.
+<img height="300em" src="https://github.com/AlexandreFCosta/ETL/blob/master/Documentation/images/overwrite.png"/>
+I encountered the error several times:
+```
+FileUtil: Failed to delete file or dir [/opt/***/gold_layer]: it still exists.
+```
+Even though I had increased the permissions and had the correct, compatible versions of all the libraries, the error persisted. As I realized that it could be a fault caused by some limitation of my machine and I didn't want to compromise the delivery of the challenge because of this, I opted to continue development using the clear_gold_layer() function to clear the directory so that we could write the data. However, in a situation with more time, I would like to mitigate the problem from the root.
