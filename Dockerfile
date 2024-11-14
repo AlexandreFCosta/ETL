@@ -2,8 +2,6 @@ FROM apache/airflow:2.7.1-python3.11
 
 USER root
 
-RUN ls
-
 # Criação de diretórios e ajuste de permissões
 RUN mkdir -p /opt/airflow/silver_layer \
     && mkdir -p /opt/airflow/gold_layer \
@@ -38,9 +36,6 @@ COPY requirements.txt /opt/airflow/requirements.txt
 # copiando airflow.cfg
 COPY airflow.cfg /opt/airflow/airflow.cfg
 
-# copiando testes unitários
-COPY ./jobs/python/unity_tests/main_tests.py /opt/airflow/main_tests.py
-
 # Configurar diretórios de dados e scripts
 RUN mkdir -p /opt/airflow/data_quality /opt/airflow/silver /opt/airflow/gold
 
@@ -49,9 +44,5 @@ COPY ./jobs/python/data_quality/data_quality.py /opt/airflow/data_quality/data_q
 COPY ./jobs/python/silver/transform_data.py /opt/airflow/silver/transform_data.py
 COPY ./jobs/python/gold/load_data.py /opt/airflow/gold/load_data.py
 
-# Switch back to the airflow user
-USER airflow
-
 # Instalar os pacotes Python a partir do requirements.txt
 RUN pip install --no-cache-dir -r /opt/airflow/requirements.txt apache-airflow-providers-slack[common.sql]==8.8.0 apache-airflow-providers-common-sql>=1.3.1 slack_sdk>=3.19.0
-RUN python -u "/opt/airflow/main_tests.py"

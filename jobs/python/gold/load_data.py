@@ -1,7 +1,6 @@
 import os
 import logging
-from pyspark.sql import SparkSession
-from pyspark.sql import DataFrame
+from pyspark.sql import SparkSession, DataFrame
 from typing import Optional
 
 
@@ -54,8 +53,8 @@ class DataAggregator:
 
     def write_gold_data(self, df: DataFrame) -> None:
         """Cria uma visão agregada com a quantidade de cervejarias por tipo e localização e escreve na camada gold."""
-        # Agrupando os dados por estado e tipo de cervejaria e contando a quantidade
-        aggregated_df = df.groupBy("state", "brewery_type").count()
+        # Chamando a função de agregação para obter o DataFrame agregado
+        aggregated_df = self.aggregate_data(df)
 
         logging.info(f"Escrevendo dados agregados na camada Gold em {self.gold_path}")
         
@@ -89,10 +88,9 @@ def main():
     # Limpeza da camada Gold
     aggregator.clear_gold_layer()
 
-    # Carregando, agregando e salvando os dados
+    # Carregando e salvando os dados agregados na camada Gold
     df_silver = aggregator.load_silver_data()
-    df_gold = aggregator.aggregate_data(df_silver)
-    aggregator.write_gold_data(df_gold)
+    aggregator.write_gold_data(df_silver)
 
     # Finalizando a sessão Spark
     spark.stop()

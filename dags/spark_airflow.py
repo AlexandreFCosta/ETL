@@ -35,7 +35,7 @@ def send_failure_slack_message(context):
 # Função para executar o script de qualidade de dados
 def run_data_quality_checks():
     # Caminho do arquivo Python de qualidade de dados
-    script_path = "/opt/airflow/data_quality/data_quality_checks.py"
+    script_path = "/opt/airflow/data_quality/data_quality.py"
     
     # Executa o script Python como um subprocesso
     result = subprocess.run(["python", script_path], capture_output=True, text=True)
